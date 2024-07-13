@@ -46,7 +46,8 @@ def input_bot(user_input, role="user"):
     """User input to GPT and returns GPT output"""
     messages.append({"role": role, "content": user_input})
     response = add_to_history()
-    return response.choices[0].message.content
+    if role == "user":
+        return response.choices[0].message.content
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -61,18 +62,10 @@ def chat():
 
 @app.route('/first_response', methods=['GET'])
 def get_first_response():
+    first_response = response.choices[0].message.content
+    input_bot(first_response, role="assistant")
     return jsonify({'response': first_response})
 
 if __name__ == '__main__':
-    # Initialize the first response
-    print("WHERE IS IT")
-    messages = initialize_messages()
-    response = client.chat.completions.create(
-        model=gpt_model,
-        messages=messages
-    )
-    first_response = response.choices[0].message.content
-    messages.append[{"role": "assistant", 
-                     "content": first_response}]
     app.run(debug=True)
  

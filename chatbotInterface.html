@@ -58,6 +58,10 @@
     // Toggle chatbot visibility
     chatbotIcon.addEventListener('click', () => {
         chatContainer.style.display = chatContainer.style.display === 'none' || chatContainer.style.display === '' ? 'block' : 'none';
+        if (chatContainer.style.display === 'block' && !sessionStorage.getItem('chatOpened')) {
+            loadFirstResponse();
+            sessionStorage.setItem('chatOpened', 'true');
+        }
     });
 
     // Send message on button click
@@ -72,7 +76,9 @@
 
     // Initial first response load
     async function loadFirstResponse() {
-        const response = await fetch('https://ddr-cef2e21d2567.herokuapp.com/first_response');
+        const response = await fetch('https://ddr-cef2e21d2567.herokuapp.com/first_response', {
+            method: 'GET'
+        });
         const data = await response.json();
         messages.innerHTML += `<div class="message bot-message">${data.response}</div>`;
         saveMessages();
