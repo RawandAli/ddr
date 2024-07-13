@@ -65,11 +65,14 @@ def get_first_response():
 
 if __name__ == '__main__':
     # Initialize the first response
+    print("WHERE IS IT")
     messages = initialize_messages()
     response = client.chat.completions.create(
         model=gpt_model,
         messages=messages
     )
     first_response = response.choices[0].message.content
-    input_bot(first_response, role="assistant")
+    messages.append[{"role": "assistant", 
+                     "content": first_response}]
     app.run(debug=True)
+ 
