@@ -12,7 +12,7 @@ app.secret_key = 'super secret key'  # Secret key for signing cookies
 Session(app)  # Initialize the session extension
 
 # Initialize the OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 CORS(app)
 
@@ -66,17 +66,12 @@ def chat():
 
 @app.route('/first_response', methods=['GET'])
 def get_first_response():
-    if 'messages' not in session:
-        session['messages'] = initialize_messages()
-    if len(session['messages']) == 1:  # Ensure it only adds the initial message once
-        response = client.chat.completions.create(
-            model=gpt_model,
-            messages=session['messages']
-        )
-        first_response = response.choices[0].message.content
-        input_bot(first_response, role="assistant")
-    else:
-        first_response = session['messages'][-1]['content']  # Get the last message if already initialized
+    response = client.chat.completions.create(
+        model=gpt_model,
+        messages=session['messages']
+    )
+    first_response = response.choices[0].message.content
+    input_bot(first_response, role="assistant")
     return jsonify({'response': first_response})
 
 if __name__ == '__main__':
