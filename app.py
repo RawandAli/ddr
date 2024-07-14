@@ -1,49 +1,41 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_session import Session
 from openai import OpenAI
 import os
 
-app = Flask(__name__)
-
-# Configure the session to use filesystem (or you can configure it to use Redis, etc.)
-app.config['SESSION_TYPE'] = 'filesystem'  # Store session data in the filesystem
-app.secret_key = 'super secret key'  # Secret key for signing cookies
-Session(app)  # Initialize the session extension
-
-# Initialize the OpenAI client
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+app = Flask(__name__)
 CORS(app)
 
 # GPT model to be used
-gpt_model = "gpt-3.5-turbo"
+gpt_model = "gpt-4o"
 
+def read_knowledge_base(file_path):
+    with open(file_path, 'r') as file:
+        content = file.read()
+    return content
+
+# Initialize knowledge base
+knowledge_base_content = read_knowledge_base('doctors.txt')
+about_content = read_knowledge_base('about.txt')
+
+prompt = f"""You are a helpful hospital assistant. Answer queries related to our hospital called DDR. \
+            Information about our hospital is delimited by triple backticks ```{about_content}```. \
+            Information about doctors is delimited by triple apostrophes '''{knowledge_base_content}''' \
+            Please read the instructions
+            IMPORTANT INSTRUCTIONS: 
+            1. Do not provide paragraphs, be short and concise.
+            2. Structure your answers in a readtable format.
+            3. If the user asks a question about a doctor or a service that is not provided by  us, simply inform them 'We do not provide that service, do you have any other queries?'.
+    """
 # Function to initialize messages
 def initialize_messages():
     return [
         {"role": "system", 
-         "content": "Begin first prompt by saying something like 'I will give you a joke and you give me the answer...'. This is your first prompt just introduce yourself and ask the question only, in your first prompt don't ask if I want another joke. Don't give the answer to the joke until I have answered it. And after you give the answer to the joke ask me if I want another one."}
+         "content": f"{prompt}"}
     ]
-
-# Function to add to history and get response from OpenAI
-def add_to_history(user_messages):
-    response = client.chat.completions.create(
-        model=gpt_model,
-        messages=user_messages
-    )
-    return response
-
-# Function to process user input and get bot response
-def input_bot(user_input, role="user"):
-    if 'messages' not in session:
-        session['messages'] = initialize_messages()
-    user_messages = session['messages']
-    user_messages.append({"role": role, "content": user_input})
-    response = add_to_history(user_messages)
-    session['messages'] = user_messages
-    if role == "user":
-        return response.choices[0].message.content
+messages = initialize_messages()
 
 @app.route('/favicon.ico')
 def favicon():
@@ -57,21 +49,25 @@ def hello():
 def chat():
     data = request.get_json()
     user_message = data.get('message')
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model=gpt_model,
+        messages=messages
+    )
+
     # Get the chatbot's response
-    bot_response = input_bot(f"'''{user_message}'''")
+    bot_response = response.choices[0].message.content
     # Add the bot's response to the message history
-    input_bot(bot_response, role="assistant")
-    
+    messages.append({"role": "assistant", "content": bot_response})
+
     return jsonify({'response': bot_response})
 
 @app.route('/first_response', methods=['GET'])
 def get_first_response():
-    response = client.chat.completions.create(
-        model=gpt_model,
-        messages=session['messages']
-    )
-    first_response = response.choices[0].message.content
-    input_bot(first_response, role="assistant")
+    first_response = "Hello, I am your virtual assistant. What would you like help with?"
+    messages.append({"role": "assistant", "content": first_response})
+
     return jsonify({'response': first_response})
 
 if __name__ == '__main__':
